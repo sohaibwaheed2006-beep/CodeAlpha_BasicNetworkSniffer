@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NetWatch — Real-time Network Packet Capture & Protocol Analysis Dashboard. Learn how data flows through networks with live packet inspection, hex dumps, and protocol breakdowns." />
+  <title>NetWatch — Network Packet Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- ── Animated Background ───────────────────────────────────────────── -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ── Top Navigation ───────────────────────────────────────────────── -->
+  <header class="navbar" role="banner">
+    <div class="navbar-brand">
+      <span class="brand-icon" aria-hidden="true">📡</span>
+      <span class="brand-name">NetWatch</span>
+      <span class="brand-tag">Packet Analyzer</span>
+    </div>
+    <nav class="navbar-center" role="navigation" aria-label="Main navigation">
+      <button class="nav-tab active" id="tab-capture" onclick="switchTab('capture')" aria-selected="true">
+        <span>🔴</span> Live Capture
+      </button>
+      <button class="nav-tab" id="tab-stats" onclick="switchTab('stats')" aria-selected="false">
+        <span>📊</span> Analytics
+      </button>
+      <button class="nav-tab" id="tab-guide" onclick="switchTab('guide')" aria-selected="false">
+        <span>📖</span> Protocol Guide
+      </button>
+    </nav>
+    <div class="navbar-actions">
+      <div class="status-indicator" id="status-indicator" aria-live="polite">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Connecting…</span>
+      </div>
+      <button class="btn btn-danger" id="btn-stop" onclick="stopCapture()" title="Stop capture">⏹ Stop</button>
+      <button class="btn btn-primary" id="btn-start" onclick="startCapture()" title="Start simulation">▶ Start</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: CAPTURE                                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <main id="tab-capture-panel" class="tab-panel active" role="main">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="filter-input" placeholder="Filter: proto:HTTP | ip:8.8.8.8 | port:443 | payload:json"
+                 aria-label="Packet filter expression" autocomplete="off" />
+          <button class="btn-clear-filter" onclick="clearFilter()" title="Clear filter">✕</button>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <span class="packet-counter" id="packet-counter" aria-live="polite">0 packets</span>
+        <label class="toggle-label" for="toggle-pause">
+          <input type="checkbox" id="toggle-pause" onchange="togglePause(this)" />
+          <span class="toggle-slider"></span>
+          <span>Pause</span>
+        </label>
+        <button class="btn btn-ghost" onclick="clearPackets()" title="Clear all packets">🗑 Clear</button>
+        <div class="dropdown">
+          <button class="btn btn-ghost" onclick="toggleDropdown('export-dd')" title="Export packets">⬇ Export</button>
+          <div class="dropdown-menu" id="export-dd" role="menu">
+            <a href="/api/export/json" class="dropdown-item" role="menuitem">📄 Export JSON</a>
+            <a href="/api/export/csv"  class="dropdown-item" role="menuitem">📋 Export CSV</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Protocol Filter Pills -->
+    <div class="proto-pills" role="group" aria-label="Protocol quick filters">
+      <span class="pill-label">Quick Filter:</span>
+      <button class="pill pill-all active" onclick="setProtoPill(this, '')" id="pill-all">ALL</button>
+      <button class="pill pill-http"  onclick="setProtoPill(this, 'proto:HTTP')"  >HTTP</button>
+      <button class="pill pill-https" onclick="setProtoPill(this, 'proto:HTTPS')" >HTTPS</button>
+      <button class="pill pill-dns"   onclick="setProtoPill(this, 'proto:DNS')"   >DNS</button>
+      <button class="pill pill-tcp"   onclick="setProtoPill(this, 'proto:TCP')"   >TCP</button>
+      <button class="pill pill-udp"   onclick="setProtoPill(this, 'proto:UDP')"   >UDP</button>
+      <button class="pill pill-icmp"  onclick="setProtoPill(this, 'proto:ICMP')"  >ICMP</button>
+      <button class="pill pill-arp"   onclick="setProtoPill(this, 'proto:ARP')"   >ARP</button>
+    </div>
+
+    <!-- Packet Table -->
+    <div class="table-wrapper">
+      <table class="packet-table" role="table" aria-label="Captured network packets">
+        <thead>
+          <tr role="row">
+            <th role="columnheader" style="width:55px">#</th>
+            <th role="columnheader" style="width:105px">Time</th>
+            <th role="columnheader" style="width:90px">Protocol</th>
+            <th role="columnheader">Source</th>
+            <th role="columnheader">Destination</th>
+            <th role="columnheader" style="width:75px">Length</th>
+            <th role="columnheader">Info</th>
+          </tr>
+        </thead>
+        <tbody id="packet-tbody" role="rowgroup">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
+      <div class="table-empty" id="table-empty" aria-live="polite">
+        <div class="empty-icon">📡</div>
+        <p>Waiting for packets…</p>
+        <p class="empty-sub">Packets will appear here in real time</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: ANALYTICS                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="tab-stats-panel" class="tab-panel" role="main" aria-hidden="true">
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" id="kpi-total">
+        <div class="kpi-icon">📦</div>
+        <div class="kpi-value" id="kpi-total-val">0</div>
+        <div class="kpi-label">Total Packets</div>
+      </div>
+      <div class="kpi-card" id="kpi-bytes">
+        <div class="kpi-icon">💾</div>
+        <div class="kpi-value" id="kpi-bytes-val">0 B</div>
+        <div class="kpi-label">Total Data</div>
+      </div>
+      <div class="kpi-card" id="kpi-protos">
+        <div class="kpi-icon">🔀</div>
+        <div class="kpi-value" id="kpi-protos-val">0</div>
+        <div class="kpi-label">Protocols Seen</div>
+      </div>
+      <div class="kpi-card" id="kpi-pps">
+        <div class="kpi-icon">⚡</div>
+        <div class="kpi-value" id="kpi-pps-val">0</div>
+        <div class="kpi-label">Pkt/s (current)</div>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <!-- Protocol Distribution -->
+      <div class="chart-card">
+        <h2 class="card-title">Protocol Distribution</h2>
+        <div class="proto-bars" id="proto-bars" aria-label="Protocol distribution chart"></div>
+      </div>
+
+      <!-- Throughput Sparkline -->
+      <div class="chart-card">
+        <h2 class="card-title">Throughput (Packets / Second)</h2>
+        <div class="sparkline-wrap">
+          <canvas id="throughput-canvas" width="520" height="120" aria-label="Packets per second over time"></canvas>
+        </div>
+        <div class="sparkline-labels">
+          <span id="spark-min">min: 0</span>
+          <span id="spark-max">max: 0</span>
+          <span id="spark-avg">avg: 0</span>
+        </div>
+      </div>
+
+      <!-- Top IPs -->
+      <div class="chart-card">
+        <h2 class="card-title">Top Source IPs</h2>
+        <div class="ip-list" id="top-src-list" aria-label="Top source IP addresses"></div>
+      </div>
+      <div class="chart-card">
+        <h2 class="card-title">Top Destination IPs</h2>
+        <div class="ip-list" id="top-dst-list" aria-label="Top destination IP addresses"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: PROTOCOL GUIDE                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="tab-guide-panel" class="tab-panel" role="main" aria-hidden="true">
+    <div class="guide-container">
+      <h1 class="guide-title">📖 Network Protocol Reference Guide</h1>
+      <p class="guide-subtitle">Learn how data flows through the OSI model and understand the protocols captured above.</p>
+
+      <!-- OSI Model -->
+      <section class="guide-section" aria-labelledby="osi-heading">
+        <h2 id="osi-heading" class="section-heading">The OSI Model — 7 Layers of Networking</h2>
+        <div class="osi-stack">
+          <div class="osi-layer layer-7"><span class="osi-num">7</span><span class="osi-name">Application</span><span class="osi-desc">HTTP, DNS, FTP, SSH, SMTP — User-facing protocols</span></div>
+          <div class="osi-layer layer-6"><span class="osi-num">6</span><span class="osi-name">Presentation</span><span class="osi-desc">TLS/SSL encryption, data encoding, compression</span></div>
+          <div class="osi-layer layer-5"><span class="osi-num">5</span><span class="osi-name">Session</span><span class="osi-desc">NetBIOS, RPC — Session establishment & teardown</span></div>
+          <div class="osi-layer layer-4"><span class="osi-num">4</span><span class="osi-name">Transport</span><span class="osi-desc">TCP (reliable), UDP (fast) — Port numbers live here</span></div>
+          <div class="osi-layer layer-3"><span class="osi-num">3</span><span class="osi-name">Network</span><span class="osi-desc">IP, ICMP, ARP — Routing packets across networks</span></div>
+          <div class="osi-layer layer-2"><span class="osi-num">2</span><span class="osi-name">Data Link</span><span class="osi-desc">Ethernet — MAC addresses, frames, switches</span></div>
+          <div class="osi-layer layer-1"><span class="osi-num">1</span><span class="osi-name">Physical</span><span class="osi-desc">Cables, Wi-Fi signals, bits over the wire</span></div>
+        </div>
+      </section>
+
+      <!-- Protocol Cards -->
+      <section class="guide-section" aria-labelledby="protos-heading">
+        <h2 id="protos-heading" class="section-heading">Key Protocols Explained</h2>
+        <div class="proto-cards-grid">
+
+          <article class="proto-card proto-card-http">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">HTTP / HTTPS</span>
+              <span class="proto-card-layer">Layer 7 · Port 80 / 443</span>
+            </div>
+            <p><strong>HyperText Transfer Protocol</strong> — the foundation of web communication. Every time you visit a website your browser sends an HTTP <code>GET</code> request. The server responds with a status code (<code>200 OK</code>, <code>404 Not Found</code>) and the page content.</p>
+            <div class="code-snippet">GET /index.html HTTP/1.1
+Host: www.example.com
+User-Agent: Mozilla/5.0
+Accept: text/html
+
+← HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1256</div>
+          </article>
+
+          <article class="proto-card proto-card-dns">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">DNS</span>
+              <span class="proto-card-layer">Layer 7 · UDP Port 53</span>
+            </div>
+            <p><strong>Domain Name System</strong> — the internet's phone book. It translates human-readable names like <code>google.com</code> into IP addresses (<code>142.250.80.46</code>). DNS queries are typically sent over UDP for speed.</p>
+            <div class="code-snippet">Query:  google.com  (A record)
+→ 8.8.8.8 (Google DNS)
+
+Response: 142.250.80.46  TTL=300s
+Type A  → IPv4 address
+Type AAAA→ IPv6 address
+Type MX → Mail server</div>
+          </article>
+
+          <article class="proto-card proto-card-tcp">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">TCP</span>
+              <span class="proto-card-layer">Layer 4 · Connection-Oriented</span>
+            </div>
+            <p><strong>Transmission Control Protocol</strong> — guarantees reliable, ordered delivery. Uses a 3-way handshake before data flows: <code>SYN → SYN-ACK → ACK</code>. TCP flags indicate state: <code>SYN</code>=connect, <code>FIN</code>=close, <code>RST</code>=reset, <code>PSH</code>=push data.</p>
+            <div class="code-snippet">Client  →  SYN        (seq=1000)
+Server  →  SYN+ACK    (seq=5000, ack=1001)
+Client  →  ACK        (ack=5001)
+          [Connection established]
+Client  →  PSH+ACK    (data)
+Server  →  FIN+ACK    (close)</div>
+          </article>
+
+          <article class="proto-card proto-card-udp">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">UDP</span>
+              <span class="proto-card-layer">Layer 4 · Connectionless</span>
+            </div>
+            <p><strong>User Datagram Protocol</strong> — fast but unreliable. No handshake, no acknowledgement, no guaranteed order. Used where speed matters more than reliability: DNS, video streaming, online gaming, VoIP.</p>
+            <div class="code-snippet">Client → Datagram (no handshake)
+Server → Datagram (may arrive out of order)
+
+No retransmission on loss.
+Applications handle reliability themselves.
+Use cases: DNS, NTP, DHCP, VoIP, Video</div>
+          </article>
+
+          <article class="proto-card proto-card-icmp">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">ICMP</span>
+              <span class="proto-card-layer">Layer 3 · Network Diagnostics</span>
+            </div>
+            <p><strong>Internet Control Message Protocol</strong> — used by network devices to send error messages and operational information. The <code>ping</code> command sends ICMP Echo Request (type 8) and expects Echo Reply (type 0). <code>traceroute</code> exploits TTL and ICMP Time Exceeded.</p>
+            <div class="code-snippet">ping google.com
+
+ICMP Type 8  → Echo Request
+ICMP Type 0  ← Echo Reply
+ICMP Type 11 → Time Exceeded (traceroute)
+ICMP Type 3  → Destination Unreachable</div>
+          </article>
+
+          <article class="proto-card proto-card-arp">
+            <div class="proto-card-header">
+              <span class="proto-card-badge">ARP</span>
+              <span class="proto-card-layer">Layer 2 · Address Resolution</span>
+            </div>
+            <p><strong>Address Resolution Protocol</strong> — maps IP addresses to MAC addresses on a local network. Before sending data, your computer broadcasts "Who has IP 192.168.1.1? Tell me your MAC address." ARP poisoning is a classic MITM attack vector.</p>
+            <div class="code-snippet">Broadcast → Who has 192.168.1.1?
+            (ff:ff:ff:ff:ff:ff)
+
+Reply ← 192.168.1.1 is at aa:bb:cc:dd:ee:ff
+
+Stored in ARP cache for 60-120 seconds.</div>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- TCP Flags Reference -->
+      <section class="guide-section" aria-labelledby="flags-heading">
+        <h2 id="flags-heading" class="section-heading">TCP Flag Reference</h2>
+        <div class="flags-table-wrap">
+          <table class="flags-table" role="table">
+            <thead><tr><th>Flag</th><th>Bit</th><th>Meaning</th><th>Common Usage</th></tr></thead>
+            <tbody>
+              <tr><td><code>SYN</code></td><td>0x02</td><td>Synchronize — initiate connection</td><td>3-way handshake start</td></tr>
+              <tr><td><code>ACK</code></td><td>0x10</td><td>Acknowledgement — confirm received</td><td>Nearly all data packets</td></tr>
+              <tr><td><code>FIN</code></td><td>0x01</td><td>Finish — graceful connection close</td><td>Connection teardown</td></tr>
+              <tr><td><code>RST</code></td><td>0x04</td><td>Reset — abrupt connection abort</td><td>Port closed / error</td></tr>
+              <tr><td><code>PSH</code></td><td>0x08</td><td>Push — send buffered data immediately</td><td>HTTP requests/responses</td></tr>
+              <tr><td><code>URG</code></td><td>0x20</td><td>Urgent — prioritize this data</td><td>Telnet break signal</td></tr>
+              <tr><td><code>ECE</code></td><td>0x40</td><td>ECN Echo — congestion notification</td><td>Network congestion control</td></tr>
+              <tr><td><code>CWR</code></td><td>0x80</td><td>Congestion Window Reduced</td><td>Sender slowing down</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Well-Known Ports -->
+      <section class="guide-section" aria-labelledby="ports-heading">
+        <h2 id="ports-heading" class="section-heading">Well-Known Port Numbers</h2>
+        <div class="ports-grid">
+          <div class="port-item"><span class="port-num">21</span><span class="port-name">FTP</span></div>
+          <div class="port-item"><span class="port-num">22</span><span class="port-name">SSH</span></div>
+          <div class="port-item"><span class="port-num">23</span><span class="port-name">Telnet</span></div>
+          <div class="port-item"><span class="port-num">25</span><span class="port-name">SMTP</span></div>
+          <div class="port-item"><span class="port-num">53</span><span class="port-name">DNS</span></div>
+          <div class="port-item"><span class="port-num">67/68</span><span class="port-name">DHCP</span></div>
+          <div class="port-item"><span class="port-num">80</span><span class="port-name">HTTP</span></div>
+          <div class="port-item"><span class="port-num">110</span><span class="port-name">POP3</span></div>
+          <div class="port-item"><span class="port-num">123</span><span class="port-name">NTP</span></div>
+          <div class="port-item"><span class="port-num">143</span><span class="port-name">IMAP</span></div>
+          <div class="port-item"><span class="port-num">161</span><span class="port-name">SNMP</span></div>
+          <div class="port-item"><span class="port-num">443</span><span class="port-name">HTTPS</span></div>
+          <div class="port-item"><span class="port-num">445</span><span class="port-name">SMB</span></div>
+          <div class="port-item"><span class="port-num">3306</span><span class="port-name">MySQL</span></div>
+          <div class="port-item"><span class="port-num">3389</span><span class="port-name">RDP</span></div>
+          <div class="port-item"><span class="port-num">8080</span><span class="port-name">HTTP-Alt</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- PACKET DETAIL MODAL                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div id="packet-modal" class="modal-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="modal-title" hidden>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title">Packet Detail</h2>
+        <div class="modal-tabs" role="tablist">
+          <button class="modal-tab active" id="mtab-layers" role="tab" aria-selected="true"
+                  onclick="switchModalTab('layers')">🗂 Layers</button>
+          <button class="modal-tab" id="mtab-hex" role="tab" aria-selected="false"
+                  onclick="switchModalTab('hex')">🔢 Hex Dump</button>
+          <button class="modal-tab" id="mtab-raw" role="tab" aria-selected="false"
+                  onclick="switchModalTab('raw')">📋 Raw JSON</button>
+        </div>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close packet detail">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Layers tab -->
+        <div id="modal-layers" class="modal-content active" role="tabpanel" aria-labelledby="mtab-layers">
+          <div id="layer-tree"></div>
+        </div>
+        <!-- Hex dump tab -->
+        <div id="modal-hex" class="modal-content" role="tabpanel" aria-labelledby="mtab-hex" hidden>
+          <div class="hex-dump-controls">
+            <span class="hex-legend"><span class="hex-legend-box hex-header"></span> Header bytes</span>
+            <span class="hex-legend"><span class="hex-legend-box hex-payload"></span> Payload bytes</span>
+            <span id="hex-byte-count" class="hex-byte-count"></span>
+          </div>
+          <pre id="hex-dump-content" class="hex-dump" aria-label="Hex dump of packet payload"></pre>
+        </div>
+        <!-- Raw JSON tab -->
+        <div id="modal-raw" class="modal-content" role="tabpanel" aria-labelledby="mtab-raw" hidden>
+          <pre id="raw-json" class="raw-json" aria-label="Raw packet JSON"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

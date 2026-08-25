@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Export artifacts
+capture_export.json
+capture_export.csv
+uploaded.pcap
+*.pcap
+*.pcapng
+packets_*.json
+packets_*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.tmp
+
+# Explanation documents (generated)
+generate_explanation.py
+NetWatch_Program_Explained.docx
+NetWatch_Program_Explained.md
