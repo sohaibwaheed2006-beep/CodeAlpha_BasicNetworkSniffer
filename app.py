@@ -329,6 +329,39 @@ def api_client_info():
     })
 
 
+@app.route("/api/agent/packet", methods=["POST"])
+def api_agent_packet():
+    """
+    Endpoint for desktop agent.py to push real network packets captured
+    from the user's physical Wi-Fi / Ethernet card.
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "No packet data"}), 400
+
+    # Reconstruct ParsedPacket
+    pp = ParsedPacket()
+    for k, v in data.items():
+        if hasattr(pp, k):
+            setattr(pp, k, v)
+
+    # Set mode as Real Agent
+    _capture_state["mode"]   = "live_agent"
+    _capture_state["method"] = "Desktop Agent (Real Network)"
+    _capture_state["iface"]  = data.get("ip_src") or "Wi-Fi Agent"
+    _capture_state["running"]= True
+
+    with engine._lock:
+        engine._packets.append(pp)
+        if len(engine._packets) > 5000:
+            engine._packets.pop(0)
+
+    engine.stats.update(pp)
+    _broadcast_packet(pp)
+
+    return jsonify({"status": "ok", "packet_id": pp.packet_id})
+
+
 @app.route("/api/packets")
 def api_packets():
     since_id    = int(request.args.get("since", 0))
