@@ -297,13 +297,20 @@ def stream():
 # Routes — REST API
 # ─────────────────────────────────────────────────────────────────────────────
 
+from flask import send_from_directory
+
+@app.route("/static/<path:filename>")
+def custom_static(filename):
+    """Ensure static CSS & JS files are always served on Vercel."""
+    return send_from_directory(os.path.join(BASE_DIR, "static"), filename)
+
+
 @app.route("/api/client-info")
 def api_client_info():
     """
     Returns client IP address and connection details.
     Works locally or deployed on Vercel / Cloud platforms.
     """
-    # Detect real public IP from headers (Vercel / Cloudflare proxy)
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         client_ip = forwarded.split(",")[0].strip()
@@ -327,6 +334,19 @@ def api_packets():
     since_id    = int(request.args.get("since", 0))
     limit       = min(int(request.args.get("limit", 100)), 500)
     filter_expr = request.args.get("filter", "")
+
+    # On Vercel serverless, background threads freeze between requests.
+    # Generate simulated packets on-the-fly if needed!
+    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    if is_vercel or len(engine._packets) < 10:
+        for _ in range(5):
+            new_pkts = engine.simulator.generate_packet()
+            for p in new_pkts:
+                engine._packets.append(p)
+                engine.stats.update(p)
+        if len(engine._packets) > 1000:
+            engine._packets = engine._packets[-1000:]
+
     packets = engine.get_packets(since_id=since_id, limit=limit, filter_expr=filter_expr)
     return jsonify({"packets": packets, "count": len(packets)})
 

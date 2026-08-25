@@ -39,31 +39,74 @@ const protoColor = (p) => PROTO_COLORS[p] || "#64748b";
 const $  = (id) => document.getElementById(id);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) e.className = cls; if(html !== undefined) e.innerHTML = html; return e; };
 
-/* ─────────────────────────────────────────────────────────────────────────
-   SSE Connection
-   ───────────────────────────────────────────────────────────────────────── */
+let isPollingFallback = false;
+let pollingTimer = null;
+let lastSeenId = 0;
+
 function connectSSE() {
   if (state.sse) { state.sse.close(); }
+  
+  // Try SSE connection
   const sse = new EventSource("/stream");
   state.sse = sse;
   setStatus("connecting", "Connecting…");
 
+  const fallbackTimeout = setTimeout(() => {
+    // If SSE hasn't received a message in 3 seconds (e.g. Vercel Serverless), switch to Polling Mode
+    if (!isPollingFallback) {
+      console.warn("SSE connection timed out. Switching to Polling Fallback mode.");
+      sse.close();
+      startPollingFallback();
+    }
+  }, 3000);
+
   sse.onopen = () => setStatus("streaming", "Live ●");
 
   sse.onmessage = (evt) => {
+    clearTimeout(fallbackTimeout);
     if (state.paused) return;
     try {
       const data = JSON.parse(evt.data);
       if (data.type === "connected") { setStatus("connected", "Connected"); return; }
+      if (data.id) lastSeenId = Math.max(lastSeenId, data.id);
       onPacket(data);
     } catch(e) { /* skip malformed */ }
   };
 
   sse.onerror = () => {
-    setStatus("disconnected", "Disconnected");
+    clearTimeout(fallbackTimeout);
     sse.close();
-    setTimeout(connectSSE, 3000);  // reconnect
+    if (!isPollingFallback) {
+      startPollingFallback();
+    }
   };
+}
+
+function startPollingFallback() {
+  isPollingFallback = true;
+  setStatus("streaming", "Live (Poll)");
+
+  if (pollingTimer) clearInterval(pollingTimer);
+  
+  const poll = async () => {
+    if (state.paused) return;
+    try {
+      const res = await fetch(`/api/packets?since=${lastSeenId}&limit=20`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.packets && data.packets.length > 0) {
+        data.packets.forEach(pkt => {
+          if (pkt.id) lastSeenId = Math.max(lastSeenId, pkt.id);
+          onPacket(pkt);
+        });
+      }
+    } catch(e) {
+      console.error("Polling error:", e);
+    }
+  };
+
+  poll();
+  pollingTimer = setInterval(poll, 1500);
 }
 
 function setStatus(cls, text) {
