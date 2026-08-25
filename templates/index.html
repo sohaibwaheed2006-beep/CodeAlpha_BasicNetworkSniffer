@@ -62,9 +62,9 @@
           <button class="btn-clear-filter" onclick="clearFilter()" title="Clear filter">✕</button>
         </div>
       </div>
-        <span class="mode-badge simulation" id="mode-badge" title="Current capture mode">⚙️ Simulation Mode</span>
-        <select class="iface-select" id="iface-select" onchange="changeInterface(this.value)" title="Select network interface or simulation mode">
-          <option value="simulate">⚙️ Simulation Mode</option>
+        <span class="mode-badge live" id="mode-badge" title="Current capture mode">📡 Real Network Mode</span>
+        <select class="iface-select" id="iface-select" onchange="changeInterface(this.value)" title="Select network interface">
+          <option value="agent">📡 Real Desktop Agent (agent.py)</option>
         </select>
         <span class="packet-counter" id="packet-counter" aria-live="polite">0 packets</span>
         <label class="toggle-label" for="toggle-pause">

@@ -61,18 +61,16 @@ _raw_sniffer = None  # RawSocketSniffer instance
 
 def get_interfaces() -> list[dict]:
     """
-    Return a list of dicts with 'name', 'description', 'ip', 'connected'.
-    Combines Windows netsh output with Scapy/raw socket info.
+    Return a list of dicts for real network capture interfaces.
     """
     interfaces = []
-    # Always add simulation option
     interfaces.append({
-        "id":          "simulate",
-        "name":        "Simulation Mode",
-        "description": "Generate realistic fake packets (no admin required)",
-        "ip":          None,
+        "id":          "agent",
+        "name":        "Real Desktop Agent",
+        "description": "Stream live Wi-Fi/Ethernet packets from local agent.py",
+        "ip":          "Live Wi-Fi",
         "connected":   True,
-        "type":        "simulate",
+        "type":        "agent",
     })
 
     # Get local IPs for raw socket mode
@@ -223,32 +221,13 @@ _parser.add_argument("--live", action="store_true")
 _parser.add_argument("--iface", default=None)
 _args, _ = _parser.parse_known_args()
 
-if _args.live or _args.iface:
-    if _args.iface:
-        # User specified exact interface id
-        ifaces = get_interfaces()
-        match = next((i for i in ifaces if _args.iface.lower() in i["name"].lower()
-                      or _args.iface == i["id"]), None)
-        if match:
-            if match["type"] == "raw":
-                _start_raw(match["ip"])
-            elif match["type"] == "scapy":
-                _start_scapy(match["npf"])
-            else:
-                _start_simulation()
-        else:
-            print(f"Interface '{_args.iface}' not found, starting simulation.")
-            _start_simulation()
-    else:
-        best = get_best_live_iface()
-        if best["type"] == "raw":
-            _start_raw(best["ip"])
-        elif best["type"] == "scapy":
-            _start_scapy(best["npf"])
-        else:
-            _start_simulation()
-else:
-    _start_simulation()
+_capture_state.update({
+    "running": False,
+    "mode": "waiting_real",
+    "method": "Real Desktop Agent (Waiting for agent.py)",
+    "iface": "Real Wi-Fi",
+    "started": None,
+})
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes — Pages
@@ -368,14 +347,7 @@ def api_packets():
     limit       = min(int(request.args.get("limit", 100)), 500)
     filter_expr = request.args.get("filter", "")
 
-    # Only generate simulation packets if no real packets exist in memory
-    if len(engine._packets) == 0:
-        for _ in range(5):
-            new_pkts = engine.simulator.generate_packet()
-            for p in new_pkts:
-                engine._packets.append(p)
-                engine.stats.update(p)
-
+    # ONLY return real packets (NO dummy/simulated packets generated)
     packets = engine.get_packets(since_id=since_id, limit=limit, filter_expr=filter_expr)
     return jsonify({"packets": packets, "count": len(packets)})
 

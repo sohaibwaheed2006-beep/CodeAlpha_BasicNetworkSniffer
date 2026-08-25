@@ -721,12 +721,12 @@ async function loadInterfaces() {
 function updateModeBadge(mode, method, iface) {
   const badge = $("mode-badge");
   if (!badge) return;
-  if (mode === "live_raw" || mode === "live_scapy") {
+  if (mode === "live_agent" || mode === "live_raw" || mode === "live_scapy") {
     badge.className = "mode-badge live";
-    badge.textContent = `📡 Live: ${iface || method}`;
+    badge.textContent = `📡 Live Real Traffic: ${iface || method}`;
   } else {
-    badge.className = "mode-badge simulation";
-    badge.textContent = `⚙️ Simulation Mode`;
+    badge.className = "mode-badge live";
+    badge.textContent = `📡 Real Network Mode (Waiting for agent.py)`;
   }
 }
 
