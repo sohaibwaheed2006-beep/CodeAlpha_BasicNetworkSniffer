@@ -62,7 +62,10 @@
           <button class="btn-clear-filter" onclick="clearFilter()" title="Clear filter">✕</button>
         </div>
       </div>
-      <div class="toolbar-right">
+        <span class="mode-badge simulation" id="mode-badge" title="Current capture mode">⚙️ Simulation Mode</span>
+        <select class="iface-select" id="iface-select" onchange="changeInterface(this.value)" title="Select network interface or simulation mode">
+          <option value="simulate">⚙️ Simulation Mode</option>
+        </select>
         <span class="packet-counter" id="packet-counter" aria-live="polite">0 packets</span>
         <label class="toggle-label" for="toggle-pause">
           <input type="checkbox" id="toggle-pause" onchange="togglePause(this)" />

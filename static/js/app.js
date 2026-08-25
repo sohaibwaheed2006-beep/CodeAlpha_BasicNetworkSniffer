@@ -692,10 +692,69 @@ setInterval(() => {
 }, 2000);
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Interface Selection & Mode Badge
+   ───────────────────────────────────────────────────────────────────────── */
+async function loadInterfaces() {
+  try {
+    const res = await fetch("/api/interfaces");
+    if (!res.ok) return;
+    const data = await res.json();
+    const select = $("iface-select");
+    if (!select) return;
+
+    select.innerHTML = "";
+    (data.interfaces || []).forEach(iface => {
+      const opt = document.createElement("option");
+      opt.value = iface.id;
+      opt.textContent = iface.type === "raw" ? `📡 Real Network (${iface.ip})`
+                       : iface.type === "scapy" ? `⚡ ${iface.name}`
+                       : `⚙️ ${iface.name}`;
+      select.appendChild(opt);
+    });
+
+    if (data.current?.mode) {
+      updateModeBadge(data.current.mode, data.current.method, data.current.iface);
+    }
+  } catch(e) {}
+}
+
+function updateModeBadge(mode, method, iface) {
+  const badge = $("mode-badge");
+  if (!badge) return;
+  if (mode === "live_raw" || mode === "live_scapy") {
+    badge.className = "mode-badge live";
+    badge.textContent = `📡 Live: ${iface || method}`;
+  } else {
+    badge.className = "mode-badge simulation";
+    badge.textContent = `⚙️ Simulation Mode`;
+  }
+}
+
+async function changeInterface(ifaceId) {
+  try {
+    const res = await fetch("/api/capture/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ iface_id: ifaceId })
+    });
+    const data = await res.json();
+    clearPackets();
+    if (data.method === "Raw Socket" || data.method === "Scapy") {
+      updateModeBadge("live_raw", data.method, data.ip || data.iface);
+    } else {
+      updateModeBadge("simulate", "Simulation", "Simulation");
+    }
+  } catch(e) {
+    console.error("Interface switch error:", e);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Init
    ───────────────────────────────────────────────────────────────────────── */
 window.addEventListener("DOMContentLoaded", () => {
   connectSSE();
+  loadInterfaces();
 
   // Load initial packets from REST API
   fetch("/api/packets?limit=100")
