@@ -45,8 +45,49 @@
       </div>
       <button class="btn btn-danger" id="btn-stop" onclick="stopCapture()" title="Stop capture">⏹ Stop</button>
       <button class="btn btn-primary" id="btn-start" onclick="startCapture()" title="Start simulation">▶ Start</button>
+      <!-- Hamburger: mobile only -->
+      <button class="hamburger-btn" id="hamburger-btn" onclick="openMobileNav()" aria-label="Open menu" title="Menu">☰</button>
     </div>
   </header>
+
+  <!-- ── Mobile Slide-In Nav Drawer ──────────────────────────────────── -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()">
+    <div class="mobile-nav-drawer" onclick="event.stopPropagation()">
+      <button class="mobile-nav-close" onclick="closeMobileNav()" aria-label="Close menu">✕</button>
+      <button class="nav-tab" id="mob-tab-capture" onclick="switchTab('capture');closeMobileNav()" aria-selected="true">
+        <span>🔴</span> Live Capture
+      </button>
+      <button class="nav-tab" id="mob-tab-stats" onclick="switchTab('stats');closeMobileNav()" aria-selected="false">
+        <span>📊</span> Analytics
+      </button>
+      <button class="nav-tab" id="mob-tab-guide" onclick="switchTab('guide');closeMobileNav()" aria-selected="false">
+        <span>📖</span> Protocol Guide
+      </button>
+      <hr style="border-color:var(--clr-border);margin:8px 0">
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="startCapture();closeMobileNav()">▶ Start</button>
+      <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:6px" onclick="stopCapture();closeMobileNav()">⏹ Stop</button>
+    </div>
+  </div>
+
+  <!-- ── Mobile Bottom Tab Bar ───────────────────────────────────────── -->
+  <nav class="mobile-tabbar" id="mobile-tabbar" aria-label="Mobile navigation">
+    <button class="mobile-tab-btn active" id="mbottom-capture" onclick="switchTab('capture')" aria-label="Live Capture">
+      <span class="mtab-icon">🔴</span>
+      <span class="mtab-label">Capture</span>
+    </button>
+    <button class="mobile-tab-btn" id="mbottom-stats" onclick="switchTab('stats')" aria-label="Analytics">
+      <span class="mtab-icon">📊</span>
+      <span class="mtab-label">Analytics</span>
+    </button>
+    <button class="mobile-tab-btn" id="mbottom-guide" onclick="switchTab('guide')" aria-label="Protocol Guide">
+      <span class="mtab-icon">📖</span>
+      <span class="mtab-label">Guide</span>
+    </button>
+    <button class="mobile-tab-btn" id="mbottom-menu" onclick="openMobileNav()" aria-label="More options">
+      <span class="mtab-icon">⚙️</span>
+      <span class="mtab-label">More</span>
+    </button>
+  </nav>
 
   <!-- ═══════════════════════════════════════════════════════════════════ -->
   <!-- TAB: CAPTURE                                                        -->
@@ -62,6 +103,7 @@
           <button class="btn-clear-filter" onclick="clearFilter()" title="Clear filter">✕</button>
         </div>
       </div>
+      <div class="toolbar-right">
         <span class="mode-badge live" id="mode-badge" title="Current capture mode">📡 Real Network Mode</span>
         <select class="iface-select" id="iface-select" onchange="changeInterface(this.value)" title="Select network interface">
           <option value="agent">📡 Real Desktop Agent (agent.py)</option>
@@ -385,5 +427,37 @@ Stored in ARP cache for 60-120 seconds.</div>
   </div>
 
   <script src="/static/js/app.js"></script>
+  <script>
+    /* ── Mobile Navigation Helpers ──────────────────────────────────── */
+    function openMobileNav() {
+      document.getElementById('mobile-nav-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMobileNav() {
+      document.getElementById('mobile-nav-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    /* Sync bottom tab bar active state with switchTab */
+    const _origSwitchTab = window.switchTab;
+    window.switchTab = function(name) {
+      _origSwitchTab(name);
+      /* Top nav */
+      document.querySelectorAll('.nav-tab[id^="tab-"]').forEach(t => t.classList.remove('active'));
+      const topTab = document.getElementById('tab-' + name);
+      if (topTab) topTab.classList.add('active');
+      /* Mobile drawer tabs */
+      ['capture','stats','guide'].forEach(n => {
+        const el = document.getElementById('mob-tab-' + n);
+        if (el) el.setAttribute('aria-selected', n === name);
+        if (el) el.classList.toggle('active', n === name);
+      });
+      /* Bottom tab bar */
+      ['capture','stats','guide'].forEach(n => {
+        const el = document.getElementById('mbottom-' + n);
+        if (el) el.classList.toggle('active', n === name);
+      });
+    };
+  </script>
 </body>
 </html>
