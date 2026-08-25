@@ -22,11 +22,24 @@
 
   <!-- ── Top Navigation ───────────────────────────────────────────────── -->
   <header class="navbar" role="banner">
-    <div class="navbar-brand">
-      <span class="brand-icon" aria-hidden="true">📡</span>
-      <span class="brand-name">NetWatch</span>
-      <span class="brand-tag">Packet Analyzer</span>
+    <!-- Row 1: Brand & Logo + Status/Actions -->
+    <div class="navbar-top-row">
+      <div class="navbar-brand">
+        <span class="brand-icon" aria-hidden="true">📡</span>
+        <span class="brand-name">NetWatch</span>
+        <span class="brand-tag">Packet Analyzer</span>
+      </div>
+      <div class="navbar-actions">
+        <div class="status-indicator" id="status-indicator" aria-live="polite">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">Connecting…</span>
+        </div>
+        <button class="btn btn-danger" id="btn-stop" onclick="stopCapture()" title="Stop capture">⏹ Stop</button>
+        <button class="btn btn-primary" id="btn-start" onclick="startCapture()" title="Start simulation">▶ Start</button>
+      </div>
     </div>
+
+    <!-- Row 2: Navigation Tabs (Live Capture | Analytics | Guide | More) -->
     <nav class="navbar-center" role="navigation" aria-label="Main navigation">
       <button class="nav-tab active" id="tab-capture" onclick="switchTab('capture')" aria-selected="true">
         <span>🔴</span> Live Capture
@@ -35,19 +48,12 @@
         <span>📊</span> Analytics
       </button>
       <button class="nav-tab" id="tab-guide" onclick="switchTab('guide')" aria-selected="false">
-        <span>📖</span> Protocol Guide
+        <span>📖</span> Guide
+      </button>
+      <button class="nav-tab nav-tab-more" id="tab-more" onclick="openMobileNav()" aria-label="More options">
+        <span>⚙️</span> More
       </button>
     </nav>
-    <div class="navbar-actions">
-      <div class="status-indicator" id="status-indicator" aria-live="polite">
-        <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Connecting…</span>
-      </div>
-      <button class="btn btn-danger" id="btn-stop" onclick="stopCapture()" title="Stop capture">⏹ Stop</button>
-      <button class="btn btn-primary" id="btn-start" onclick="startCapture()" title="Start simulation">▶ Start</button>
-      <!-- Hamburger: mobile only -->
-      <button class="hamburger-btn" id="hamburger-btn" onclick="openMobileNav()" aria-label="Open menu" title="Menu">☰</button>
-    </div>
   </header>
 
   <!-- ── Mobile Slide-In Nav Drawer ──────────────────────────────────── -->
