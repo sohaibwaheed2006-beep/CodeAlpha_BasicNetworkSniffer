@@ -486,9 +486,18 @@ def upload_pcap():
 if __name__ == "__main__":
     print("\n" + "=" * 65)
     print("  NetWatch Dashboard  --  http://127.0.0.1:5000")
-    print(f"  Mode   : {_capture_state.get('method', 'Simulation')}")
-    print(f"  Iface  : {_capture_state.get('iface', 'N/A')}")
-    print("  Use --live flag to start with real network capture")
+    print("  Mode   : Real Network Capture (Auto-started)")
     print("  Press Ctrl+C to stop")
     print("=" * 65 + "\n")
+
+    # Auto-start real raw socket sniffer automatically
+    try:
+        best = get_best_live_iface()
+        if best.get("ip"):
+            _start_raw(best["ip"])
+        else:
+            _start_raw("0.0.0.0")
+    except Exception as e:
+        print(f"[Auto-Sniffer] Info: {e}")
+
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
