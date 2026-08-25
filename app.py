@@ -368,17 +368,13 @@ def api_packets():
     limit       = min(int(request.args.get("limit", 100)), 500)
     filter_expr = request.args.get("filter", "")
 
-    # On Vercel serverless, background threads freeze between requests.
-    # Generate simulated packets on-the-fly if needed!
-    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-    if is_vercel or len(engine._packets) < 10:
+    # Only generate simulation packets if no real packets exist in memory
+    if len(engine._packets) == 0:
         for _ in range(5):
             new_pkts = engine.simulator.generate_packet()
             for p in new_pkts:
                 engine._packets.append(p)
                 engine.stats.update(p)
-        if len(engine._packets) > 1000:
-            engine._packets = engine._packets[-1000:]
 
     packets = engine.get_packets(since_id=since_id, limit=limit, filter_expr=filter_expr)
     return jsonify({"packets": packets, "count": len(packets)})
