@@ -126,10 +126,10 @@ body {
   position: sticky; top: 0; z-index: 100;
 }
 
-.navbar-brand { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.brand-icon-svg { display: block; filter: drop-shadow(0 0 6px rgba(59,130,246,.4)); flex-shrink: 0; }
-.brand-name  { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #3b82f6; }
-.brand-tag   { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--clr-text-muted); background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.25); border-radius: 20px; padding: 2px 8px; margin-left: 4px; }
+.navbar-brand { display: flex; align-items: center; gap: var(--sp-sm); }
+.brand-icon  { font-size: 22px; }
+.brand-name  { font-size: 18px; font-weight: 700; background: var(--clr-primary-g); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.brand-tag   { font-size: 10px; font-weight: 500; color: var(--clr-text-muted); background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.25); border-radius: 20px; padding: 2px 8px; margin-left: 4px; }
 
 .navbar-center { display: flex; gap: var(--sp-xs); }
 
