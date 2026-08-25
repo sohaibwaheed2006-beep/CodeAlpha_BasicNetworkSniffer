@@ -297,6 +297,31 @@ def stream():
 # Routes — REST API
 # ─────────────────────────────────────────────────────────────────────────────
 
+@app.route("/api/client-info")
+def api_client_info():
+    """
+    Returns client IP address and connection details.
+    Works locally or deployed on Vercel / Cloud platforms.
+    """
+    # Detect real public IP from headers (Vercel / Cloudflare proxy)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.remote_addr or "127.0.0.1"
+
+    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
+    return jsonify({
+        "client_ip":   client_ip,
+        "is_vercel":   is_vercel,
+        "environment": "Vercel Cloud" if is_vercel else "Local Host",
+        "user_agent":  request.headers.get("User-Agent", "Unknown"),
+        "headers":     dict(request.headers),
+        "timestamp":   datetime.now().isoformat(),
+    })
+
+
 @app.route("/api/packets")
 def api_packets():
     since_id    = int(request.args.get("since", 0))
